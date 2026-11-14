@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 리터러시 통합 자동평가 갤러리</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body { 
+            font-family: 'Noto Serif KR', serif; 
+            background-color: #f4ece9;
+        }
+
+        /* 하늘하늘거리는 코스모스 배경 효과 */
+        #bg-layer {
+            position: fixed;
+            top: -5%; left: -5%;
+            width: 110%; height: 110%;
+            background-image: url('cosmos.jpeg');
+            background-size: cover;
+            background-position: center;
+            z-index: -1;
+            animation: sway 12s ease-in-out infinite alternate;
+            filter: contrast(0.95) saturate(1.1);
+        }
+
+        @keyframes sway {
+            0% { transform: scale(1) rotate(-0.5deg) translate(0, 0); }
+            100% { transform: scale(1.03) rotate(0.5deg) translate(8px, 12px); }
+        }
+        
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: rgba(255,255,255,0.3); }
+        ::-webkit-scrollbar-thumb { background: rgba(168,162,158,0.5); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(120,113,108,0.7); }
+
+        .fade-in { animation: fadeIn 0.4s ease-out forwards; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .modal-overlay {
+            background-color: rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(4px);
+        }
+
+        /* AI Loading Spinner */
+        .ai-loader {
+            border: 3px solid rgba(244, 63, 94, 0.3);
+            border-top: 3px solid #e11d48;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="text-stone-800 antialiased h-screen flex flex-col overflow-hidden">
+    
+    <!-- Animated Cosmos Background Layer -->
+    <div id="bg-layer"></div>
+
+    <!-- Header / Navbar -->
+    <header class="bg-white/60 backdrop-blur-md shadow-sm z-10 relative border-b border-white/40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <div class="flex items-center space-x-3">
+                    <div class="bg-gradient-to-br from-rose-600 to-rose-800 text-white p-2 rounded-lg shadow-sm border border-rose-200/50">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    </div>
+                    <span class="font-bold text-lg sm:text-xl text-stone-900 tracking-tight flex items-center drop-shadow-sm bg-white/40 px-2 rounded-md">AI 산출물 통합 자동평가 갤러리</span>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <button id="btn-bgm" class="bg-white/60 hover:bg-white/90 backdrop-blur-sm text-rose-700 px-3 py-2 sm:px-4 sm:py-2.5 rounded-full font-medium transition-all shadow-sm flex items-center space-x-2 text-sm sm:text-base border border-rose-200/50">
+                        <svg id="icon-play" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        <svg id="icon-pause" class="w-5 h-5 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        <span class="hidden sm:inline">음악</span>
+                    </button>
+                    <button id="btn-open-modal" class="bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-700 hover:to-rose-800 text-white px-4 py-2 sm:px-5 sm:py-2.5 rounded-full font-medium transition-all shadow-md flex items-center space-x-2 text-sm sm:text-base border border-rose-200/50">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                        <span>산출물 제출 & AI 평가</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 overflow-hidden flex flex-col relative max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6">
+        
+        <!-- Category Tabs -->
+        <div class="flex overflow-x-auto pb-2 mb-6 space-x-2 no-scrollbar hide-scroll">
+            <button class="tab-btn active px-5 py-2 rounded-full font-medium text-sm transition-colors bg-stone-800 text-white shadow-sm border border-stone-800" data-tab="all">전체보기</button>
+            <button class="tab-btn px-5 py-2 rounded-full font-medium text-sm transition-colors bg-white/70 backdrop-blur-sm text-stone-600 border border-stone-200 hover:bg-white/90" data-tab="music">🎵 음악 (저작권)</button>
+            <button class="tab-btn px-5 py-2 rounded-full font-medium text-sm transition-colors bg-white/70 backdrop-blur-sm text-stone-600 border border-stone-200 hover:bg-white/90" data-tab="science">🔬 과학 (데이터편향)</button>
+            <button class="tab-btn px-5 py-2 rounded-full font-medium text-sm transition-colors bg-white/70 backdrop-blur-sm text-stone-600 border border-stone-200 hover:bg-white/90" data-tab="history">📜 역사 (딥페이크)</button>
+        </div>
+
+        <!-- Gallery Grid -->
+        <div id="gallery-container" class="flex-1 overflow-y-auto pb-20 pr-1">
+            <div id="gallery-grid" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                <!-- Cards will be injected here -->
+            </div>
+            
+            <div id="empty-state" class="hidden flex flex-col items-center justify-center py-20 text-stone-600 bg-white/50 backdrop-blur-sm rounded-2xl border border-white/50 shadow-sm max-w-md mx-auto mt-10">
+                <svg class="w-16 h-16 mb-4 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                <p class="text-lg font-medium">아직 등록된 산출물이 없습니다.</p>
+                <p class="text-sm mt-1">산출물을 제출하고 AI 선생님의 피드백을 받아보세요!</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- Upload Modal -->
+    <div id="upload-modal" class="fixed inset-0 modal-overlay z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
+        <div class="bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl w-11/12 max-w-xl transform scale-95 transition-transform duration-300 overflow-hidden border border-white/60 flex flex-col max-h-[90vh]" id="modal-content">
+            
+            <div class="bg-stone-50/80 px-6 py-4 border-b border-white/60 flex justify-between items-center shrink-0">
+                <h3 class="text-lg font-bold text-stone-800 flex items-center">
+                    <svg class="w-5 h-5 mr-2 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg>
+                    산출물 제출 및 AI 리터러시 평가
+                </h3>
+                <button id="btn-close-modal" class="text-stone-400 hover:text-stone-600 transition-colors focus:outline-none">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            
+            <form id="upload-form" class="p-6 overflow-y-auto space-y-5">
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="col-span-2 sm:col-span-1">
+                        <label class="block text-sm font-semibold text-stone-700 mb-1">교과 분류 <span class="text-red-500">*</span></label>
+                        <select id="input-subject" required class="w-full bg-white border border-stone-200 text-stone-900 rounded-lg focus:ring-2 focus:ring-rose-400 p-2.5 shadow-sm">
+                            <option value="" disabled selected>선택해주세요</option>
+                            <option value="music">음악 (AI 저작권)</option>
+                            <option value="science">과학 (데이터 편향)</option>
+                            <option value="history">역사 (딥페이크/환각)</option>
+                        </select>
+                    </div>
+                    <div class="col-span-2 sm:col-span-1">
+                        <label class="block text-sm font-semibold text-stone-700 mb-1">작성자(이름/조) <span class="text-red-500">*</span></label>
+                        <input type="text" id="input-author" required placeholder="예: 홍길동" class="w-full bg-white border border-stone-200 text-stone-900 rounded-lg focus:ring-2 focus:ring-rose-400 p-2.5 shadow-sm">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-stone-700 mb-1">산출물 제목 <span class="text-red-500">*</span></label>
+                    <input type="text" id="input-title" required placeholder="핵심 내용이 잘 드러나게 적어주세요." class="w-full bg-white border border-stone-200 text-stone-900 rounded-lg focus:ring-2 focus:ring-rose-400 p-2.5 shadow-sm">
+                </div>
+
+                <div class="bg-stone-50 p-4 rounded-xl border border-stone-200 space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-semibold text-stone-700 mb-1">산출물 형태 <span class="text-red-500">*</span></label>
+                            <select id="input-media-type" class="w-full bg-white border border-stone-200 text-stone-900 rounded-lg p-2.5 shadow-sm text-sm outline-none">
+                                <option value="link">웹 링크 (QR 생성)</option>
+                                <option value="image">이미지 파일</option>
+                                <option value="audio">오디오 (소리)</option>
+                                <option value="video">비디오 (영상)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-semibold text-stone-700 mb-1">등록 방식 <span class="text-red-500">*</span></label>
+                            <select id="input-media-source" class="w-full bg-white border border-stone-200 text-stone-900 rounded-lg p-2.5 shadow-sm text-sm outline-none">
+                                <option value="url">URL 입력</option>
+                                <option value="file">파일 직접 첨부</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div id="wrap-url">
+                        <input type="url" id="input-url" required placeholder="https://..." class="w-full bg-white border border-stone-200 text-stone-900 rounded-lg p-2.5 shadow-sm">
+                    </div>
+                    <div id="wrap-file" class="hidden">
+                        <input type="file" id="input-file" class="w-full text-sm text-stone-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-rose-100 file:text-rose-700 hover:file:bg-rose-200 transition-colors focus:outline-none">
+                        <p class="text-xs text-rose-500 mt-2">* 700KB 이하만 가능. 대용량은 URL 활용</p>
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-semibold text-stone-700 mb-1 flex items-center justify-between">
+                        <span>AI 활용 및 팩트체크 과정 설명 <span class="text-red-500">*</span></span>
+                        <span class="text-xs text-rose-600 bg-rose-50 px-2 py-0.5 rounded">AI 평가 기준</span>
+                    </label>
+                    <textarea id="input-desc" required rows="3" placeholder="어떤 프롬프트를 썼는지, 편향성/저작권/사실 여부를 어떻게 재검증했는지 적어주세요. (AI가 이 내용을 읽고 평가합니다!)" class="w-full bg-white border border-stone-200 text-stone-900 rounded-lg focus:ring-2 focus:ring-rose-400 p-2.5 shadow-sm leading-relaxed"></textarea>
+                </div>
+
+                <div class="pt-2">
+                    <button type="submit" id="btn-submit" class="w-full flex items-center justify-center space-x-2 text-white bg-gradient-to-r from-rose-600 to-rose-700 hover:from-rose-700 hover:to-rose-800 focus:ring-4 focus:ring-rose-300 font-bold rounded-lg text-base px-5 py-3.5 shadow-md">
+                        <span id="btn-submit-text">제출 및 AI 피드백 받기</span>
+                        <div id="btn-submit-spinner" class="ai-loader hidden"></div>
+                    </button>
+                    <p class="text-center text-xs text-stone-500 mt-2">Gemini AI가 윤리적 관점에서 분석 후 갤러리에 자동 전시됩니다.</p>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-6 left-1/2 transform -translate-x-1/2 translate-y-20 opacity-0 transition-all duration-300 bg-stone-800/95 text-white px-6 py-3 rounded-full shadow-2xl z-50 flex items-center space-x-3 pointer-events-none border border-stone-700">
+        <svg id="toast-icon-success" class="w-5 h-5 text-emerald-400 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+        <span id="toast-message" class="font-medium text-sm">알림 메시지</span>
+    </div>
+
+    <audio id="bgm-audio" loop>
+        <source src="https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=lofi-study-112191.mp3" type="audio/mpeg">
+    </audio>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'ai-literacy-integrated';
+        let app, db, auth, userId;
+        let allGalleryItems = [];
+        let currentFilter = 'all';
+
+        const modal = document.getElementById('upload-modal');
+        const modalContent = document.getElementById('modal-content');
+        const uploadForm = document.getElementById('upload-form');
+        const btnSubmit = document.getElementById('btn-submit');
+        const btnSubmitText = document.getElementById('btn-submit-text');
+        const btnSubmitSpinner = document.getElementById('btn-submit-spinner');
+        
+        const inputMediaSource = document.getElementById('input-media-source');
+        const wrapUrl = document.getElementById('wrap-url');
+        const wrapFile = document.getElementById('wrap-file');
+        const inputUrl = document.getElementById('input-url');
+        const inputFile = document.getElementById('input-file');
+        let fileBase64 = '';
+        
+        const galleryGrid = document.getElementById('gallery-grid');
+        const emptyState = document.getElementById('empty-state');
+        const tabBtns = document.querySelectorAll('.tab-btn');
+        const bgmAudio = document.getElementById('bgm-audio');
+        let isBgmPlaying = false;
+
+        const subjectConfig = {
+            'music': { label: '음악', colorClass: 'bg-rose-100 text-rose-800 border-rose-200' },
+            'science': { label: '과학', colorClass: 'bg-teal-100 text-teal-800 border-teal-200' },
+            'history': { label: '역사', colorClass: 'bg-amber-100 text-amber-800 border-amber-200' }
+        };
+
+        async function init() {
+            try {
+                const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : { projectId: "dummy" };
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                const initialToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+                if (initialToken) await signInWithCustomToken(auth, initialToken);
+                else await signInAnonymously(auth);
+                
+                userId = auth.currentUser.uid;
+                fetchGalleryData();
+                
+            } catch (error) {
+                console.error("Firebase init error:", error);
+                showToast("앱 초기화 중 오류가 발생했습니다.", true);
+            }
+
+            document.getElementById('btn-open-modal').addEventListener('click', openModal);
+            document.getElementById('btn-close-modal').addEventListener('click', closeModal);
+            modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+
+            document.getElementById('btn-bgm').addEventListener('click', () => {
+                if (isBgmPlaying) {
+                    bgmAudio.pause();
+                    document.getElementById('icon-play').classList.remove('hidden');
+                    document.getElementById('icon-pause').classList.add('hidden');
+                } else {
+                    bgmAudio.play().catch(e => console.log(e));
+                    document.getElementById('icon-play').classList.add('hidden');
+                    document.getElementById('icon-pause').classList.remove('hidden');
+                }
+                isBgmPlaying = !isBgmPlaying;
+            });
+
+            uploadForm.addEventListener('submit', handleFormSubmit);
+
+            inputMediaSource.addEventListener('change', (e) => {
+                if(e.target.value === 'file') {
+                    wrapUrl.classList.add('hidden'); inputUrl.required = false;
+                    wrapFile.classList.remove('hidden'); inputFile.required = true;
+                } else {
+                    wrapFile.classList.add('hidden'); inputFile.required = false;
+                    wrapUrl.classList.remove('hidden'); inputUrl.required = true;
+                }
+            });
+
+            inputFile.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if(!file) { fileBase64 = ''; return; }
+                if(file.size > 700 * 1024) {
+                    showToast('파일 용량이 700KB를 초과합니다.', true);
+                    inputFile.value = ''; fileBase64 = ''; return;
+                }
+                const reader = new FileReader();
+                reader.onload = (evt) => fileBase64 = evt.target.result;
+                reader.readAsDataURL(file);
+            });
+
+            tabBtns.forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const selectedTab = e.currentTarget.dataset.tab;
+                    tabBtns.forEach(b => {
+                        b.classList.remove('bg-stone-800', 'text-white', 'border-stone-800');
+                        b.classList.add('bg-white/70', 'backdrop-blur-sm', 'text-stone-600', 'border-stone-200');
+                    });
+                    e.currentTarget.classList.remove('bg-white/70', 'text-stone-600', 'border-stone-200');
+                    e.currentTarget.classList.add('bg-stone-800', 'text-white', 'border-stone-800');
+                    currentFilter = selectedTab;
+                    renderGallery();
+                });
+            });
+        }
+
+        function openModal() {
+            modal.classList.remove('hidden');
+            void modal.offsetWidth; 
+            modal.classList.remove('opacity-0');
+            modalContent.classList.remove('scale-95');
+            modalContent.classList.add('scale-100');
+        }
+
+        function closeModal() {
+            modal.classList.add('opacity-0');
+            modalContent.classList.remove('scale-100');
+            modalContent.classList.add('scale-95');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                uploadForm.reset();
+                wrapUrl.classList.remove('hidden'); wrapFile.classList.add('hidden');
+                inputUrl.required = true; inputFile.required = false; fileBase64 = '';
+            }, 300);
+        }
+
+        // Call Gemini API for AI Literacy Feedback
+        async function getAIFeedback(subject, title, desc, link) {
+            const apiKey = "";
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+
+            let guidelines = "";
+            if (subject === 'music') guidelines = "음악(저작권): AI가 생성한 부분과 본인 창작의 구분 명확성, 출처 표기 등";
+            else if (subject === 'science') guidelines = "과학(데이터편향): 데이터의 편향성 인지, 편향 해결을 위한 프롬프트/자료 추가 노력 등";
+            else if (subject === 'history') guidelines = "역사(딥페이크): 거짓 정보(환각) 팩트체크 여부, 딥페이크 표기(워터마크) 등 윤리 준수 여부";
+
+            const prompt = `당신은 중학생들의 AI 리터러시(윤리, 활용 태도)를 평가하는 따뜻하고 예리한 교사입니다.
+학생이 제출한 다음 산출물 정보를 바탕으로, [${guidelines}] 기준에 맞춰 비판적이면서도 건설적인 한 줄 평(피드백)을 작성해주세요. 칭찬할 점과 발전 방향을 2~3문장 이내로 친근한 해요체로 짧게 작성하세요.
+
+[학생 제출 정보]
+- 교과: ${subject}
+- 산출물 제목: ${title}
+- 과정 설명(프롬프트, 팩트체크 등): ${desc}
+- 산출물 링크/데이터: ${link.substring(0, 100)}`; // Trim long base64
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+                });
+                const result = await response.json();
+                return result.candidates?.[0]?.content?.parts?.[0]?.text || "훌륭한 산출물입니다! AI 윤리에 대한 고민이 잘 담겨있네요.";
+            } catch (err) {
+                console.error("Gemini Error:", err);
+                return "훌륭하게 활용했습니다. 다음엔 교과서와 한번 더 비교해보는 것도 좋겠어요!";
+            }
+        }
+
+        async function handleFormSubmit(e) {
+            e.preventDefault();
+            if(!auth.currentUser) return;
+
+            btnSubmit.disabled = true;
+            btnSubmitText.innerText = 'AI가 리터러시 역량을 분석 중입니다...';
+            btnSubmitSpinner.classList.remove('hidden');
+
+            const mediaSource = document.getElementById('input-media-source').value;
+            const subject = document.getElementById('input-subject').value;
+            const author = document.getElementById('input-author').value;
+            const title = document.getElementById('input-title').value;
+            const desc = document.getElementById('input-desc').value;
+            const mType = document.getElementById('input-media-type').value;
+
+            let finalData = mediaSource === 'url' ? inputUrl.value : fileBase64;
+            if (mediaSource === 'file' && !fileBase64) {
+                showToast("파일을 첨부해주세요.", true);
+                resetBtn(); return;
+            }
+
+            // Generate AI Feedback
+            const aiFeedback = await getAIFeedback(subject, title, desc, finalData);
+
+            const newItem = {
+                subject, author, title, desc, aiFeedback,
+                mediaType: mType, mediaData: finalData, mediaSource,
+                userId: userId, timestamp: serverTimestamp()
+            };
+
+            try {
+                const ref = collection(db, 'artifacts', appId, 'public', 'data', 'integrated_gallery');
+                await addDoc(ref, newItem);
+                showToast("평가 완료! 갤러리에 등록되었습니다.");
+                closeModal();
+            } catch (error) {
+                console.error(error);
+                showToast("등록 중 오류 발생", true);
+            } finally {
+                resetBtn();
+            }
+        }
+
+        function resetBtn() {
+            btnSubmit.disabled = false;
+            btnSubmitText.innerText = '제출 및 AI 피드백 받기';
+            btnSubmitSpinner.classList.add('hidden');
+        }
+
+        function fetchGalleryData() {
+            const ref = collection(db, 'artifacts', appId, 'public', 'data', 'integrated_gallery');
+            onSnapshot(ref, (snapshot) => {
+                const data = [];
+                snapshot.forEach(doc => {
+                    const docData = doc.data();
+                    data.push({ id: doc.id, ...docData, date: docData.timestamp ? docData.timestamp.toDate() : new Date() });
+                });
+                data.sort((a, b) => b.date - a.date);
+                allGalleryItems = data;
+                renderGallery();
+            });
+        }
+
+        function renderGallery() {
+            galleryGrid.innerHTML = '';
+            const filteredItems = currentFilter === 'all' ? allGalleryItems : allGalleryItems.filter(i => i.subject === currentFilter);
+
+            if (filteredItems.length === 0) {
+                emptyState.classList.remove('hidden');
+            } else {
+                emptyState.classList.add('hidden');
+                filteredItems.forEach((item, idx) => {
+                    const conf = subjectConfig[item.subject] || subjectConfig['music'];
+                    
+                    const card = document.createElement('div');
+                    card.className = "bg-white/90 backdrop-blur-md rounded-2xl shadow-lg border border-white/80 overflow-hidden flex flex-col h-full fade-in";
+                    card.style.animationDelay = `${idx * 0.05}s`;
+
+                    let mediaHtml = '';
+                    const mType = item.mediaType || 'link';
+                    const mData = item.mediaData;
+
+                    if (mType === 'link') {
+                        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(mData)}`;
+                        mediaHtml = `<div class="w-full h-40 bg-stone-100 flex items-center justify-center p-2"><img src="${qrUrl}" class="h-32 w-32 object-contain hover:scale-105 transition-transform"></div>`;
+                    } else if (mType === 'image') {
+                        mediaHtml = `<div class="w-full h-40 bg-stone-100"><img src="${escapeHTML(mData)}" class="w-full h-full object-cover"></div>`;
+                    } else if (mType === 'audio') {
+                        mediaHtml = `<div class="w-full h-40 bg-rose-50 flex items-center justify-center p-4"><audio controls src="${escapeHTML(mData)}" class="w-full"></audio></div>`;
+                    } else if (mType === 'video') {
+                        mediaHtml = `<div class="w-full h-40 bg-black"><video controls src="${escapeHTML(mData)}" class="w-full h-full object-cover"></video></div>`;
+                    }
+
+                    // Card Body
+                    const body = document.createElement('div');
+                    body.className = "p-5 flex-1 flex flex-col";
+                    
+                    body.innerHTML = `
+                        <div class="flex justify-between items-start mb-3">
+                            <span class="px-2.5 py-1 text-xs font-bold rounded-md border ${conf.colorClass}">${conf.label}</span>
+                            <span class="text-sm font-semibold text-stone-600">${escapeHTML(item.author)}</span>
+                        </div>
+                        <h3 class="font-bold text-lg text-stone-800 leading-snug mb-2">${escapeHTML(item.title)}</h3>
+                        <p class="text-xs text-stone-500 line-clamp-2 mb-4">💬 활용 과정: ${escapeHTML(item.desc)}</p>
+                        
+                        <!-- AI Feedback Area -->
+                        <div class="mt-auto bg-gradient-to-br from-indigo-50 to-blue-50 rounded-xl p-4 border border-indigo-100/50 shadow-inner relative">
+                            <div class="absolute -top-3 -left-2 bg-indigo-600 text-white text-[10px] font-bold px-2 py-1 rounded-full flex items-center shadow-sm">
+                                <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                                AI 윤리 평가 결과
+                            </div>
+                            <p class="text-sm text-indigo-900 font-medium leading-relaxed mt-2 italic">"${escapeHTML(item.aiFeedback)}"</p>
+                        </div>
+                    `;
+
+                    const linkBtn = document.createElement('a');
+                    linkBtn.href = escapeHTML(mData);
+                    linkBtn.target = "_blank";
+                    linkBtn.className = "bg-stone-50 hover:bg-rose-50 border-t border-stone-200 py-3 px-5 text-center text-stone-600 hover:text-rose-700 font-semibold text-sm transition-colors flex items-center justify-center space-x-1 group";
+                    linkBtn.innerHTML = `<span>산출물 원본 보기</span><svg class="w-4 h-4 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>`;
+
+                    card.innerHTML = mediaHtml;
+                    card.appendChild(body);
+                    card.appendChild(linkBtn);
+                    
+                    galleryGrid.appendChild(card);
+                });
+            }
+        }
+
+        function escapeHTML(str) {
+            if(!str) return '';
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        function showToast(msg, isError = false) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-message').innerText = msg;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => toast.classList.add('translate-y-20', 'opacity-0'), 3000);
+        }
+
+        window.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
